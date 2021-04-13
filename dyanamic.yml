@@ -1,0 +1,73 @@
+- hosts: localhost
+  vars_prompt: 
+  - name: container_name
+    prompt: "enter container name"
+    private: no 
+  tasks:
+  - name : "configure yum for docker"
+    yum_repository:
+          name: "docker1-ce"
+          description: "docker1"
+          baseurl: "https://download.docker.com/linux/centos/7/x86_64/stable/"
+          gpgcheck: no
+  - name : "pip"
+    pip: 
+         name: "docker"    
+  - name: "Installing docker"    
+    package:
+           name: "docker-ce-18.09.1-3.e17.x86_64"
+           state: present
+
+  - name: "STarting docker service"     
+    service:
+           name: "docker"
+           state: started
+           
+
+        
+  - name: "Pulling docker image"  
+    docker_image:
+            name: "httpd"
+            source: pull
+  - name: "Webpage"
+    copy:
+            src: test.html
+            dest: "/var/www/html"    
+      
+  - name: "Launch {{container_name}} container"
+    docker_container: 
+           name: "{{container_name}}"
+           image: "httpd"
+           
+          
+
+           volumes: "/var/www/html:/usr/local/apache2/htdocs/"
+            # - name: "Container info"
+            #   docker_container_info:
+            # name: "{{ container_name }}"
+           
+    register: docker_info
+
+  - debug: 
+            var: docker_info.ansible_facts.docker_container.NetworkSettings.IPAddress
+
+  - name: "Retriving ip dynamically "
+    template:
+            src: "docker.txt"
+            dest: "/root/ip.txt"
+  
+
+- hosts : docker
+  tasks: 
+  - name: "Installing httpd"
+    package:
+            name: "httpd"
+            state: present
+
+  - name: " Webpage"
+    copy:
+            src: "test.html"
+            dest: "/var/www/html"
+
+  - name: "starting service"
+    command: "/usr/sbin/httpd"    
